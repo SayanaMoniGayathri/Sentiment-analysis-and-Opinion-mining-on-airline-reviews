@@ -1,0 +1,222 @@
+Program Code
+Code.py
+__________
+____________
+
+import numpy as np import pandas as pd import re
+import nltk
+
+import matplotlib.pyplot as plt
+
+%matplotlib inline
+
+airline_tweets = pd.read_csv(r'C:\Users\SMONIGAYATHRI\OneDrive\Desktop\New\Tweets.csv') airline_tweets.head()
+plot_size=plt.rcParams["figure.figsize"] print(plot_size[0])
+print(plot_size[1]) plot_size[0]=8 plot_size[1]=6
+plt.rcParams["figure.figsize"]=plot_size
+
+airline_tweets.airline.value_counts().plot(kind='pie',autopct="%1.0f%%")
+
+airline_tweets.airline_sentiment.value_counts().plot(kind='pie', autopct='%1.0f%%', colors=["red","yellow","green"])
+airline_sentiment=airline_tweets.groupby(['airline','airline_sentiment']).airline_sentiment.count().uns tack()
+airline_sentiment.plot(kind='bar') import seaborn as sns
+ 
+sns.barplot(x='airline_sentiment',y='airline_sentiment_confidence', data=airline_tweets) features=airline_tweets.iloc[:,10].values
+labels=airline_tweets.iloc[:,1].values processed_features=[]
+for sentence in range(0, len(features)): processed_feature=re.sub(r'\W', ' ', str(features[sentence])) processed_feature=re.sub(r'\s+[a-zA-Z]\s+', ' ', processed_feature) processed_feature=re.sub(r'\^[a-zA-Z]\s+', ' ', processed_feature) processed_feature=re.sub(r'\s+', ' ', processed_feature,flags=re.I) processed_feature=re.sub(r'^b\s+', '', processed_feature) processed_feature=processed_feature.lower() processed_features.append(processed_feature)
+
+
+import warnings warnings.filterwarnings("ignore")
+print(airline_tweets.negativereason.value_counts()) plt.figure(figsize=(25,5)) sns.countplot(airline_tweets.negativereason)
+
+
+import warnings warnings.filterwarnings("ignore") import nltk
+from wordcloud import WordCloud,STOPWORDS from nltk.corpus import stopwords
+ 
+from nltk.stem import SnowballStemmer import re
+nltk.download('stopwords')
+
+stop_words = stopwords.words('english')
+
+
+
+new_data=airline_tweets[airline_tweets['airline_sentiment']=='negative'] words = ' '.join(new_data['text'])
+cleaned_word=' '.join([word for word in words.split() if 'http' not in word
+and not word.startswith('@') and word !='RT'])
+wordcloud = WordCloud(stopwords=STOPWORDS, background_color='black', width=3000,
+height=2500
+
+).generate(cleaned_word) plt.figure(1,figsize=(10,10)) plt.imshow(wordcloud)
+plt.axis('off') plt.show()
+
+
+new_data=airline_tweets[airline_tweets['airline_sentiment']=='positive'] words = ' '.join(new_data['text'])
+cleaned_word=' '.join([word for word in words.split()
+ 
+if 'http' not in word
+
+and not word.startswith('@') and word !='RT'])
+wordcloud = WordCloud(stopwords=STOPWORDS, background_color='black', width=3000,
+height=2500
+
+).generate(cleaned_word) plt.figure(1,figsize=(10,10)) plt.imshow(wordcloud)
+plt.axis('off') plt.show()
+neutral_text=airline_tweets[airline_tweets['airline_sentiment']=='neutral'] words=''.join(neutral_text['text'])
+cleaned_word=' '.join([word for word in words.split() if 'http' not in word
+and not word.startswith('@') and word!='RT'])
+wordcloud=WordCloud(stopwords=STOPWORDS, background_color='black', width=3000, height=2500).generate(cleaned_word)
+plt.figure(1,figsize=(10,10)) plt.imshow(wordcloud)
+ 
+plt.axis('off') plt.show()
+text_cleaning_re = "@\S+|https?:\S+|http?:\S|[^A-Za-z0-9]+" def preprocess(x,stem=False):
+x=re.sub(text_cleaning_re,' ',str(x).lower()).strip() tokens=[]
+for token in x.split('\n'):
+
+if token not in stop_words: if stem:
+tokens.append(stemmer.stem(token)) else:
+tokens.append(token) return ' '.join(tokens)
+airline_tweets.text=airline_tweets.text.apply(lambda x:preprocess(x))
+
+airline_tweets['sentiment']=airline_tweets['airline_sentiment'].apply(lambda x: 0 if x=='negative' else 1)
+print(airline_tweets.sentiment.value_counts()) y=airline_tweets.sentiment
+from sklearn.feature_extraction.text import TfidfVectorizer vectorizer = TfidfVectorizer(min_df=10)
+X= vectorizer.fit_transform(airline_tweets.text) from sklearn.model_selection import train_test_split
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state=0) import sklearn
+model = sklearn.linear_model.LogisticRegression(penalty="l2", C=0.1)
+ 
+model.fit(X_train, y_train)
+
+score = model.score(X_test, y_test) score
+from sklearn.metrics import classification_report, confusion_matrix sns.heatmap(confusion_matrix(y_test, model.predict(X_test))) print(classification_report(y_test, model.predict(X_test)))
+from sklearn.ensemble import RandomForestClassifier models=RandomForestClassifier()
+models.fit(X_train, y_train)
+
+score = models.score(X_test, y_test) score
+from sklearn.metrics import classification_report, confusion_matrix print(classification_report(y_test, model.predict(X_test))) sns.heatmap(confusion_matrix(y_test, model.predict(X_test))) from sklearn.svm import SVC
+svm=SVC()
+
+svm=SVC(kernel="rbf", C=0.025, probability=True) svm.fit(X_train,y_train)
+score = svm.score(X_test, y_test) score
+from sklearn.metrics import classification_report, confusion_matrix print(classification_report(y_test, model.predict(X_test))) sns.heatmap(confusion_matrix(y_test, model.predict(X_test))) from sklearn.tree import DecisionTreeClassifier
+ 
+model=DecisionTreeClassifier(criterion="gini") model.fit(X_train,y_train)
+score = model.score(X_test, y_test) score
+from sklearn.metrics import classification_report, confusion_matrix print(classification_report(y_test, model.predict(X_test))) sns.heatmap(confusion_matrix(y_test, model.predict(X_test))) model.fit(X_train,y_train,epochs=20,batch_size=32,verbose = 5) model.save("sentiment.h5")
+
+Flask Programming
+	App.py
+___________________________
+________________________________
+
+from flask import render_template, Flask, request,url_for #from werkzeug.utils import secure_filename
+#from gevent.pywsgi import WSGIServer from keras.models import load_model import pickle
+import tensorflow as tf
+graph = tf.get_default_graph()
+with open(r'CountVectorizer','rb') as file: cv=pickle.load(file)
+cla = load_model('sentiment.h5')
+
+
+app = Flask( name ) @app.route('/')
+def index():
+return render_template('index.html')
+ 
+@app.route('/tpredict')
+@app.route('/', methods = ['GET','POST'])
+
+
+def page2():
+if request.method == 'GET':
+img_url = url_for('static',filename = 'style/3.jpg') return render_template('index.html',url=img_url)
+if request.method == 'POST': topic = request.form['tweet'] print("Hey " +topic) topic=cv.transform([topic]) print("\n"+str(topic.shape)+"\n") with graph.as_default():
+y_pred = cla.predict_classes(topic) print("pred is "+str(y_pred))
+if(y_pred[0] == 2):
+img_url = url_for('static',filename = 'style/1.jpg') topic = "Positive Tweet"
+elif(y_pred[0] == 0):
+img_url = url_for('static',filename = 'style/2.jpg') topic = "Negative Tweet"
+else:
+img_url = url_for('static',filename = 'style/3.jpg') print(img_url)
+topic = "Neutral Tweet"
+
+
+return render_template('index.html',ypred = topic)
+
+
+if	name	== ' main ':
+app.run(host = 'localhost', debug = True , threaded = False)
+
+Html code
+_______________
+_______________________________________________________
+
+<html>
+ 
+<head>
+<title>{{ title }} Sentiment Analysis</title>
+<style> html {
+background: #404550;
+}
+
+
+body {
+background-color:white; background-
+image:url("https://miro.medium.com/proxy/1*NF6AdPk6sOMNNbQE5glvEQ.png"); background-repeat:no-repeat;
+background-position:center bottom;
+
+
+
+}
+
+
+
+form, div{
+border-bottom: 2px solid rgb(76, 67, 65); margin-bottom: 5em;
+margin-left: auto; margin-right: auto; width: 50em
+}
+
+
+ 
+h1 {
+ 
+
+font-family: Georgia, Times, "Times New Roman", serif; font-size: 1.8em;
+color:red;
+text-align:center;
+border-bottom: 2px solid rgb(76, 67, 65); margin-bottom: 1.5em;
+ 
+background: url(../_images/icon_sprites_50.png) no-repeat
+}
+
+
+.example_a { border: none;
+background: #404040; color: #ffffff !important; font-weight: 100; padding: 20px;
+text-transform: uppercase; border-radius: 6px; display: inline-block; transition: all 0.3s ease 0s;
+
+float: right; margin-top: 2em;
+}
+
+
+.example_a:hover {
+color: #404040 !important;
+font-weight: 700 !important; letter-spacing: 3px; background: none;
+-webkit-box-shadow: 0px 5px 40px -10px rgba(0,0,0,0.57);
+-moz-box-shadow: 0px 5px 40px -10px rgba(0,0,0,0.57); transition: all 0.3s ease 0s;
+}
+</style>
+</head>
+<body>
+<h1>Opinion Mining on AirLine Reviews</h1>
+<form method="POST">
+ 
+<textarea	name="text1"	placeholder="Type	your	Tweet	here:	"	rows="5" cols="50"></textarea><br><br>
+
+<input class="example_a" type="submit">
+</form>
+{% if final %}
+<div>
+<h2>The Sentiment of</h2> '{{ text1 }}' <h2>is {{ final }}% positive !</h2>
+{% else %}
+<p></p>
+{% endif %}
+</div>
+</body>
+</html>
